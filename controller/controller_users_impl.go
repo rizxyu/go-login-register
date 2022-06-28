@@ -69,7 +69,7 @@ func (c *ControllerUsersImpl) Login(w http.ResponseWriter, r *http.Request) {
 func (c *ControllerUsersImpl) Home(w http.ResponseWriter, r *http.Request) {
 	session, _ := Store.Get(r, "session")
 	if session.Values["auth"] == "true" {
-		fmt.Fprint(w, "Suxcez Login")
+		fmt.Fprint(w, "Succes Login")
 		return
 	}
 	http.Redirect(w, r, "/login", http.StatusUnauthorized)
