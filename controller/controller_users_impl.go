@@ -33,7 +33,10 @@ func (c *ControllerUsersImpl) Register(w http.ResponseWriter, r *http.Request) {
 	Email := r.FormValue("email")
 	Password := r.FormValue("password")
 	hash, err := bcrypt.GenerateFromPassword([]byte(Password), bcrypt.DefaultCost)
-	helper.IfError(err)
+	if err != nil {
+	  http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	user := &models.User{
 		Username: Username,
 		Email:    Email,
