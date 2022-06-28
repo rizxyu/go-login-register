@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"net/http"
 	"vnia-auth-session/helper"
 	"vnia-auth-session/models"
@@ -25,7 +24,7 @@ func NewControllerUsers(db *gorm.DB) *ControllerUsersImpl {
 
 func (c *ControllerUsersImpl) Register(w http.ResponseWriter, r *http.Request) {
 	session, _ := Store.Get(r, "session")
-	if session.Values["auth"] == "true" {
+	if session.Values["auth-vnia"] == "true" {
 		http.Redirect(w, r, "/", http.StatusAccepted)
 		return
 	}
@@ -34,7 +33,7 @@ func (c *ControllerUsersImpl) Register(w http.ResponseWriter, r *http.Request) {
 	Password := r.FormValue("password")
 	hash, err := bcrypt.GenerateFromPassword([]byte(Password), bcrypt.DefaultCost)
 	if err != nil {
-	  http.Error(w, err.Error(), http.StatusInternalServerError)
+	  helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	user := &models.User{
@@ -43,15 +42,15 @@ func (c *ControllerUsersImpl) Register(w http.ResponseWriter, r *http.Request) {
 		Password: string(hash),
 	}
 	if err := c.Db.Create(&user).Error; err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	fmt.Fprint(w, user)
+	helper.RespondwithJSON(w, http.StatusOK, user)
 }
 
 func (c *ControllerUsersImpl) Login(w http.ResponseWriter, r *http.Request) {
 	session, _ := Store.Get(r, "session")
-	if session.Values["auth"] == "true" {
+	if session.Values["auth-vnia"] == "true" {
 		http.Redirect(w, r, "/", http.StatusAccepted)
 		return
 	}
@@ -59,21 +58,28 @@ func (c *ControllerUsersImpl) Login(w http.ResponseWriter, r *http.Request) {
 	Password := r.FormValue("password")
 	var user models.User
 	if err := c.Db.Where("email = ?", Email).Take(&user).Error; err == gorm.ErrRecordNotFound {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		helper.RespondWithError(w, http.StatusInternalServerError, "Akun Kamu Belum Terdaftar")
 		return
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(Password)); err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		helper.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	session.Values["auth-vnia"] = true
+	session.Values["email"] = Email
+	session.Values["username"] = user.Username
 	session.Save(r, w)
+	helper.RespondwithJSON(w, http.StatusOK, user)
 }
 
 func (c *ControllerUsersImpl) Home(w http.ResponseWriter, r *http.Request) {
 	session, _ := Store.Get(r, "session")
-	if session.Values["auth"] == "true" {
-		fmt.Fprint(w, "Succes Login")
+	if session.Values["auth-vnia"] == true {
+	  var user models.User
+	  c.Db.Where("email = ?", session.Values["email"]).Take(&user)
+	  helper.RespondwithJSON(w, http.StatusOK, user)
 		return
+	} else {
+	  helper.RespondWithError(w, http.StatusUnauthorized, "Silahkan Login")
 	}
-	http.Redirect(w, r, "/login", http.StatusUnauthorized)
 }
